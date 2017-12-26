@@ -272,7 +272,21 @@ class population
 	 */
 	void do_crossover()
 	{
-		
+		vector<int> crossovers_idx; // 要交叉的染色体的下标
+		for (int i = 0; i < chromosome_num; ++i)
+		{
+			if (urd(eng) <= crossover_rate)
+			{
+				// urd(eng) 在 0 到 1 之间， crossover_rate 也是。
+				// 因此一个染色体有 crossover_rate 的概率被选中
+				crossovers_idx.push_back(i);
+			}
+		}
+
+		for (int i = 1; i < crossovers_idx.size(); i += 2)
+		{
+			chromosomes_[crossovers_idx[i - 1]].crossover(chromosomes_[crossovers_idx[i]]);
+		}
 	}
 
 	/**
@@ -288,6 +302,72 @@ class population
 				chromosome.mutation();
 			}
 		}
+	}
+
+	/**
+	 * \brief 使用轮盘赌算法产生下一代种群（不进行交叉和变异）
+	 * \return 
+	 */
+	population generate_by_roulette() const
+	{
+		double fitness_sum = 0;
+		for (const chromosome& chromosome : chromosomes_)
+		{
+			fitness_sum += chromosome.get_fitness();
+		}
+
+		double probability_sum = 0;
+		vector<double> probabilitys(chromosome_num);
+		// 数组： [p0, p0+p1, p0+p1+p2,..., p0+p1+...p(n-1)=1]
+		for (int i = 0; i < chromosome_num; ++i)
+		{
+			probability_sum += chromosomes_[i].get_fitness() / fitness_sum;
+			probabilitys[i] = probability_sum;
+		}
+
+		vector<chromosome> s1;
+		for (int i = 0; i < chromosome_num; ++i)
+		{
+			double a = urd(eng);
+			int j = 0;
+			while (j < chromosome_num - 1)
+			{
+				if (a <= probabilitys[j])
+					break;
+				++j;
+			}
+			s1.push_back(chromosomes_[j]);
+		}
+
+		return population(std::move(s1), dist_);
+	}
+
+	/**
+	 * \brief 使用贪心算法来生成下一代种群。这样能保证最快收敛
+	 * \return 
+	 */
+	population generate_by_greedy() const
+	{
+		population a(*this);
+		a.do_crossover();
+
+		population b(*this);
+		b.do_mutation();
+
+		vector<chromosome> all;
+		all.reserve(chromosomes_.size() * 3);
+
+		all.insert(all.end(), chromosomes_.begin(), chromosomes_.end());
+		all.insert(all.end(), a.chromosomes_.begin(), a.chromosomes_.end());
+		all.insert(all.end(), b.chromosomes_.begin(), b.chromosomes_.end());
+
+		sort(all.begin(), all.end(), [](const chromosome& l, const chromosome& r)
+		{
+			return l.get_fitness() >= r.get_fitness();
+		});
+
+		vector<chromosome> s1(all.begin(), all.begin() + chromosomes_.size());
+		return population(std::move(s1), dist_);
 	}
 
 public:
@@ -351,64 +431,15 @@ public:
 	 */
 	population do_ga()
 	{
-		/// 使用轮盘赌算法来选择染色体
-		double fitness_sum = 0;
-		for (const chromosome& chromosome : chromosomes_)
-		{
-			fitness_sum += chromosome.get_fitness();
-		}
+		// 使用轮盘赌算法来选择染色体
+		population s1(generate_by_roulette());
 
-		double probability_sum = 0;
-		vector<double> probabilitys(chromosome_num);
-		// 数组： [p0, p0+p1, p0+p1+p2,..., p0+p1+...p(n-1)=1]
-		for (int i = 0; i < chromosome_num; ++i)
-		{
-			probability_sum += chromosomes_[i].get_fitness() / fitness_sum;
-			probabilitys[i] = probability_sum;
-		}
+		//随机选择 s1 中的种群进行交叉
+		s1.do_crossover();
+		//随机选择s1中的种群进行变异
+		s1.do_mutation();
 
-		vector<chromosome> s1;
-		for (int i = 0; i < chromosome_num; ++i)
-		{
-			double a = urd(eng);
-			int j = 0;
-			while (j < chromosome_num - 1)
-			{
-				if (a <= probabilitys[j])
-					break;
-				++j;
-			}
-			s1.push_back(chromosomes_[j]);
-		}
-
-		///随机选择 s1 中的种群进行交叉
-		vector<int> crossovers_idx; // 要交叉的染色体的下标
-		for (int i = 0; i < chromosome_num; ++i)
-		{
-			if (urd(eng) <= crossover_rate)
-			{
-				// urd(eng) 在 0 到 1 之间， crossover_rate 也是。
-				// 因此一个染色体有 crossover_rate 的概率被选中
-				crossovers_idx.push_back(i);
-			}
-		}
-
-		for (int i = 1; i < crossovers_idx.size(); i += 2)
-		{
-			s1[crossovers_idx[i - 1]].crossover(s1[crossovers_idx[i]]);
-		}
-
-		///随机选择s1中的种群进行变异
-		for (auto& chromosome : s1)
-		{
-			if (urd(eng) <= mutation_rate)
-			{
-				// 原理同上
-				chromosome.mutation();
-			}
-		}
-
-		return population(std::move(s1), dist_);
+		return s1;
 	}
 
 	/**

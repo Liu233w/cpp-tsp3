@@ -127,15 +127,6 @@ public:
 	}
 
 	/**
-	 * \brief 获取适应度（路径长度的倒数），越大越好
-	 * \return 
-	 */
-	double get_fitness() const
-	{
-		return 1 / get_length();
-	}
-
-	/**
 	 * \brief 突变：取3个点u<v<w,把子串[u,v]插到w后面
 	 */
 	void mutation()
@@ -233,14 +224,12 @@ public:
 	}
 
 	/**
-	 * \brief 向指定的流中打印序列，以空格分开
-	 * \param os 
+	 * \brief 获取该序列的引用，用于遍历序列
+	 * \return 
 	 */
-	void print_points(ostream& os) const
+	vector<int>& get_point_indexs()
 	{
-		os << sequence_[0];
-		for (int i = 1; i < sequence_.size(); ++i)
-			os << ' ' << sequence_[i];
+		return sequence_;
 	}
 };
 
@@ -289,6 +278,11 @@ class population
 			}
 		}
 
+		for(int i=0;i<crossovers_idx.size();++i)
+		{
+			swap(crossovers_idx[i], crossovers_idx[rd() % crossovers_idx.size()]);
+		}
+
 		for (int i = 1; i < crossovers_idx.size(); i += 2)
 		{
 			chromosomes_[crossovers_idx[i - 1]].crossover(chromosomes_[crossovers_idx[i]]);
@@ -314,39 +308,39 @@ class population
 	 * \brief 使用轮盘赌算法产生下一代种群（不进行交叉和变异）
 	 * \return 
 	 */
-	population generate_by_roulette() const
-	{
-		double fitness_sum = 0;
-		for (const chromosome& chromosome : chromosomes_)
-		{
-			fitness_sum += chromosome.get_fitness();
-		}
+	//population generate_by_roulette() const
+	//{
+	//	double fitness_sum = 0;
+	//	for (const chromosome& chromosome : chromosomes_)
+	//	{
+	//		fitness_sum += chromosome.get_fitness();
+	//	}
 
-		double probability_sum = 0;
-		vector<double> probabilitys(chromosome_num);
-		// 数组： [p0, p0+p1, p0+p1+p2,..., p0+p1+...p(n-1)=1]
-		for (int i = 0; i < chromosome_num; ++i)
-		{
-			probability_sum += chromosomes_[i].get_fitness() / fitness_sum;
-			probabilitys[i] = probability_sum;
-		}
+	//	double probability_sum = 0;
+	//	vector<double> probabilitys(chromosome_num);
+	//	// 数组： [p0, p0+p1, p0+p1+p2,..., p0+p1+...p(n-1)=1]
+	//	for (int i = 0; i < chromosome_num; ++i)
+	//	{
+	//		probability_sum += chromosomes_[i].get_fitness() / fitness_sum;
+	//		probabilitys[i] = probability_sum;
+	//	}
 
-		vector<chromosome> s1;
-		for (int i = 0; i < chromosome_num; ++i)
-		{
-			double a = urd(eng);
-			int j = 0;
-			while (j < chromosome_num - 1)
-			{
-				if (a <= probabilitys[j])
-					break;
-				++j;
-			}
-			s1.push_back(chromosomes_[j]);
-		}
+	//	vector<chromosome> s1;
+	//	for (int i = 0; i < chromosome_num; ++i)
+	//	{
+	//		double a = urd(eng);
+	//		int j = 0;
+	//		while (j < chromosome_num - 1)
+	//		{
+	//			if (a <= probabilitys[j])
+	//				break;
+	//			++j;
+	//		}
+	//		s1.push_back(chromosomes_[j]);
+	//	}
 
-		return population(std::move(s1), dist_);
-	}
+	//	return population(std::move(s1), dist_);
+	//}
 
 	/**
 	 * \brief 使用贪心算法来生成下一代种群。这样能保证最快收敛
@@ -456,7 +450,7 @@ public:
 		int idx = 0;
 		for (int i = 1; i < chromosome_num; ++i)
 		{
-			if (chromosomes_[idx].get_fitness() < chromosomes_[i].get_fitness())
+			if (chromosomes_[idx].get_length() > chromosomes_[i].get_length())
 			{
 				idx = i;
 			}
@@ -496,11 +490,11 @@ class ga
 	int generation_ = 0;
 
 	/**
-	 * \brief 如果连续 max_collapse_times 次fitness值小于这个，则停止
+	 * \brief 如果连续 max_collapse_times 次length差值小于这个，则停止
 	 */
-	constexpr static double max_fitness_diff = 1e-15;
+	constexpr static double max_length_diff = 1e-15;
 
-	const static int max_collapse_times = 200;
+	const static int max_collapse_times = 1000;
 
 public:
 
@@ -527,15 +521,15 @@ public:
 	{
 		print_status();
 
-		double last_fitness = last_population_.get_best_chromosome().get_fitness();
+		double last_length = last_population_.get_best_chromosome().get_length();
 		int collapse_time = 0;
 
 		while (true)
 		{
 			++generation_;
 			population new_population(last_population_.do_ga());
-			double new_fitness = new_population.get_best_chromosome().get_fitness();
-			if (new_fitness - last_fitness < max_fitness_diff)
+			const double new_length = new_population.get_best_chromosome().get_length();
+			if (new_length - last_length < max_length_diff)
 			{
 				if (++collapse_time >= max_collapse_times)
 				{
@@ -547,6 +541,7 @@ public:
 				collapse_time = 0;
 			}
 
+			last_length = new_length;
 			last_population_ = std::move(new_population);
 			print_status();
 		}
@@ -556,7 +551,12 @@ public:
 	{
 		auto best_chromosome = last_population_.get_best_chromosome();
 		cout << "第 " << generation_ << " 代，长度： " << best_chromosome.get_length() << endl;
-		best_chromosome.print_points(cout);
+		vector<int> &idxs = best_chromosome.get_point_indexs();
+		cout << points_[idxs[0]].name;
+		for (int i=1;i<idxs.size();++i)
+		{
+			cout << ' ' << points_[idxs[i]].name;
+		}
 		cout << endl;
 	}
 };

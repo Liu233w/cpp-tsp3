@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -109,6 +110,11 @@ public:
 		sequence_ = other.sequence_;
 		sum_length_ = other.sum_length_;
 		return *this;
+	}
+
+	bool operator<(const chromosome& other) const
+	{
+		return get_length() < other.get_length();
 	}
 
 	/**
@@ -361,10 +367,7 @@ class population
 		all.insert(all.end(), a.chromosomes_.begin(), a.chromosomes_.end());
 		all.insert(all.end(), b.chromosomes_.begin(), b.chromosomes_.end());
 
-		sort(all.begin(), all.end(), [](const chromosome& l, const chromosome& r)
-		{
-			return l.get_fitness() >= r.get_fitness();
-		});
+		sort(all.begin(), all.end());
 
 		vector<chromosome> s1(all.begin(), all.begin() + chromosomes_.size());
 		return population(std::move(s1), dist_);
@@ -431,15 +434,17 @@ public:
 	 */
 	population do_ga()
 	{
-		// 使用轮盘赌算法来选择染色体
-		population s1(generate_by_roulette());
+		//// 使用轮盘赌算法来选择染色体
+		//population s1(generate_by_roulette());
 
-		//随机选择 s1 中的种群进行交叉
-		s1.do_crossover();
-		//随机选择s1中的种群进行变异
-		s1.do_mutation();
+		////随机选择 s1 中的种群进行交叉
+		//s1.do_crossover();
+		////随机选择s1中的种群进行变异
+		//s1.do_mutation();
 
-		return s1;
+		//return s1;
+
+		return generate_by_greedy();
 	}
 
 	/**

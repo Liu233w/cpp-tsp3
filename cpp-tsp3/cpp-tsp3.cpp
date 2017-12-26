@@ -255,12 +255,12 @@ class population
 	/**
 	 * \brief 交叉率
 	 */
-	constexpr static double crossover_rate = 0.5;
+	constexpr static double crossover_rate = 1;
 
 	/**
 	 * \brief 变异率
 	 */
-	constexpr static double mutation_rate = 0.001;
+	constexpr static double mutation_rate = 0.1;
 
 	/**
 	 * \brief 对该种群进行交叉操作
@@ -278,7 +278,7 @@ class population
 			}
 		}
 
-		for(int i=0;i<crossovers_idx.size();++i)
+		for (int i = 0; i < crossovers_idx.size(); ++i)
 		{
 			swap(crossovers_idx[i], crossovers_idx[rd() % crossovers_idx.size()]);
 		}
@@ -308,39 +308,39 @@ class population
 	 * \brief 使用轮盘赌算法产生下一代种群（不进行交叉和变异）
 	 * \return 
 	 */
-	//population generate_by_roulette() const
-	//{
-	//	double fitness_sum = 0;
-	//	for (const chromosome& chromosome : chromosomes_)
-	//	{
-	//		fitness_sum += chromosome.get_fitness();
-	//	}
+	population generate_by_roulette() const
+	{
+		double fitness_sum = 0;
+		for (const chromosome& chromosome : chromosomes_)
+		{
+			fitness_sum += 1 / chromosome.get_length();
+		}
 
-	//	double probability_sum = 0;
-	//	vector<double> probabilitys(chromosome_num);
-	//	// 数组： [p0, p0+p1, p0+p1+p2,..., p0+p1+...p(n-1)=1]
-	//	for (int i = 0; i < chromosome_num; ++i)
-	//	{
-	//		probability_sum += chromosomes_[i].get_fitness() / fitness_sum;
-	//		probabilitys[i] = probability_sum;
-	//	}
+		double probability_sum = 0;
+		vector<double> probabilitys(chromosome_num);
+		// 数组： [p0, p0+p1, p0+p1+p2,..., p0+p1+...p(n-1)=1]
+		for (int i = 0; i < chromosome_num; ++i)
+		{
+			probability_sum += (1 / chromosomes_[i].get_length()) / fitness_sum;
+			probabilitys[i] = probability_sum;
+		}
 
-	//	vector<chromosome> s1;
-	//	for (int i = 0; i < chromosome_num; ++i)
-	//	{
-	//		double a = urd(eng);
-	//		int j = 0;
-	//		while (j < chromosome_num - 1)
-	//		{
-	//			if (a <= probabilitys[j])
-	//				break;
-	//			++j;
-	//		}
-	//		s1.push_back(chromosomes_[j]);
-	//	}
+		vector<chromosome> s1;
+		for (int i = 0; i < chromosome_num; ++i)
+		{
+			double a = urd(eng);
+			int j = 0;
+			while (j < chromosome_num - 1)
+			{
+				if (a <= probabilitys[j])
+					break;
+				++j;
+			}
+			s1.push_back(chromosomes_[j]);
+		}
 
-	//	return population(std::move(s1), dist_);
-	//}
+		return population(std::move(s1), dist_);
+	}
 
 	/**
 	 * \brief 使用贪心算法来生成下一代种群。这样能保证最快收敛
@@ -428,17 +428,21 @@ public:
 	 */
 	population do_ga()
 	{
-		//// 使用轮盘赌算法来选择染色体
-		//population s1(generate_by_roulette());
-
-		////随机选择 s1 中的种群进行交叉
-		//s1.do_crossover();
-		////随机选择s1中的种群进行变异
-		//s1.do_mutation();
-
-		//return s1;
-
+		/// 使用贪心算法选择染色体
 		return generate_by_greedy();
+
+		/// 使用轮盘赌算法来选择染色体
+		population s1(generate_by_roulette());
+
+		//随机选择 s1 中的种群进行交叉
+		s1.do_crossover();
+		//随机选择s1中的种群进行变异
+		s1.do_mutation();
+
+		// 精英主义
+		s1.chromosomes_[rd() % chromosome_num] = get_best_chromosome();
+
+		return s1;
 	}
 
 	/**
@@ -496,10 +500,13 @@ class ga
 
 	const static int max_collapse_times = 1000;
 
+	ostream& data_out_stream_;
+
 public:
 
-	explicit ga(const vector<point>& points)
-		: points_(points), dist_(points.size()), last_population_(dist_)
+	explicit ga(const vector<point>& points, ostream& data_out_stream)
+		: points_(points), dist_(points.size()),
+		  last_population_(dist_), data_out_stream_(data_out_stream)
 	{
 		for (vector<double>& line : dist_)
 		{
@@ -529,7 +536,7 @@ public:
 			++generation_;
 			population new_population(last_population_.do_ga());
 			const double new_length = new_population.get_best_chromosome().get_length();
-			if (new_length - last_length < max_length_diff)
+			if (abs(new_length - last_length) < max_length_diff)
 			{
 				if (++collapse_time >= max_collapse_times)
 				{
@@ -551,19 +558,25 @@ public:
 	{
 		auto best_chromosome = last_population_.get_best_chromosome();
 		cout << "第 " << generation_ << " 代，长度： " << best_chromosome.get_length() << endl;
-		vector<int> &idxs = best_chromosome.get_point_indexs();
-		cout << points_[idxs[0]].name;
-		for (int i=1;i<idxs.size();++i)
+
+		vector<int>& idxs = best_chromosome.get_point_indexs();
+		string seq = "";
+		seq+= points_[idxs[0]].name;
+		for (int i = 1; i < idxs.size(); ++i)
 		{
-			cout << ' ' << points_[idxs[i]].name;
+			seq += ' ';
+			seq += points_[idxs[i]].name;
 		}
-		cout << endl;
+
+		cout << seq << endl;
+		data_out_stream_ << best_chromosome.get_length() << ' ' << seq << endl;
 	}
 };
 
 int main()
 {
 	ifstream fin("in.txt");
+	ofstream fout("out.txt");
 
 	int n;
 	fin >> n;
@@ -576,6 +589,6 @@ int main()
 		points.push_back(std::move(p));
 	}
 
-	ga prog(points);
+	ga prog(points, fout);
 	prog.start_ga();
 }

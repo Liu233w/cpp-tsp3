@@ -255,12 +255,17 @@ class population
 	/**
 	 * \brief 交叉率
 	 */
-	constexpr static double crossover_rate = 1;
+	constexpr static double crossover_rate = 0.8;
 
 	/**
 	 * \brief 变异率
 	 */
-	constexpr static double mutation_rate = 0.1;
+	constexpr static double mutation_rate = 0.2;
+
+	/**
+	 * \brief 最大精英比率
+	 */
+	constexpr static double max_elite_rate = 0.3;
 
 	/**
 	 * \brief 对该种群进行交叉操作
@@ -367,6 +372,27 @@ class population
 		return population(std::move(s1), dist_);
 	}
 
+	/**
+	 * \brief 
+	 * 按照比率用本种群中适应度最高的几个染色体替换that种群适应度最低的几个。
+	 * 每次放进去的数量都是随机的，但不会超过 max_elite_rate。
+	 * 这样做可以加快算法的收敛速度。
+	 * \param that 
+	 */
+	void elite_fix(population& that)
+	{
+		sort(chromosomes_.begin(), chromosomes_.end());
+		sort(that.chromosomes_.begin(), that.chromosomes_.end());
+
+		const uniform_real_distribution<double> urd(0, max_elite_rate);
+
+		const int elite_num = urd(eng) * chromosome_num;
+		for (int i = 0; i < elite_num; ++i)
+		{
+			that.chromosomes_[chromosome_num - i - 1] = chromosomes_[i];
+		}
+	}
+
 public:
 
 	/**
@@ -429,7 +455,7 @@ public:
 	population do_ga()
 	{
 		/// 使用贪心算法选择染色体
-		return generate_by_greedy();
+		//return generate_by_greedy();
 
 		/// 使用轮盘赌算法来选择染色体
 		population s1(generate_by_roulette());
@@ -440,7 +466,7 @@ public:
 		s1.do_mutation();
 
 		// 精英主义
-		s1.chromosomes_[rd() % chromosome_num] = get_best_chromosome();
+		elite_fix(s1);
 
 		return s1;
 	}
@@ -561,7 +587,7 @@ public:
 
 		vector<int>& idxs = best_chromosome.get_point_indexs();
 		string seq = "";
-		seq+= points_[idxs[0]].name;
+		seq += points_[idxs[0]].name;
 		for (int i = 1; i < idxs.size(); ++i)
 		{
 			seq += ' ';

@@ -8,6 +8,7 @@
 #include <string>
 #include <fstream>
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
 
@@ -402,13 +403,6 @@ public:
 	population(const vector<vector<double>>& dist)
 		: dist_(dist)
 	{
-	}
-
-	/**
-	 * \brief 初始化染色体，将随机生成染色体
-	 */
-	void init()
-	{
 		chromosomes_.reserve(chromosome_num);
 		for (int i = 0; i < chromosome_num; ++i)
 		{
@@ -504,17 +498,6 @@ class ga
 	population last_population_;
 
 	/**
-	 * \brief 计算两点距离
-	 * \param a 
-	 * \param b 
-	 * \return 
-	 */
-	static double get_dist(const point& a, const point& b)
-	{
-		return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-	}
-
-	/**
 	 * \brief 已经进化了多少代
 	 */
 	int generation_ = 0;
@@ -530,24 +513,11 @@ class ga
 
 public:
 
-	explicit ga(const vector<point>& points, ostream& data_out_stream)
-		: points_(points), dist_(points.size()),
+	explicit ga(const vector<point>& points, ostream& data_out_stream,
+	            const vector<vector<double>>& dist)
+		: points_(points), dist_(dist),
 		  last_population_(dist_), data_out_stream_(data_out_stream)
 	{
-		for (vector<double>& line : dist_)
-		{
-			line.resize(points.size(), 0);
-		}
-		for (int i = 1; i < points.size(); ++i)
-		{
-			for (int j = 0; j < i; ++j)
-			{
-				double dis = get_dist(points[i], points[j]);
-				dist_[i][j] = dist_[j][i] = dis;
-			}
-		}
-
-		last_population_.init();
 	}
 
 	void start_ga()
@@ -607,12 +577,31 @@ public:
 #endif
 		data_out_stream_ << best_chromosome.get_length() << ' ' << seq << endl;
 	}
+
+	/**
+	 * \brief 获取最优结果
+	 * \return 
+	 */
+	double get_min_length() const
+	{
+		return last_population_.get_best_chromosome().get_length();
+	}
 };
+
+/**
+ * \brief 计算两点距离
+ * \param a 
+ * \param b 
+ * \return 
+ */
+double get_dist(const point& a, const point& b)
+{
+	return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+}
 
 int main()
 {
 	ifstream fin("in.txt");
-	ofstream fout("out.txt");
 
 	int n;
 	fin >> n;
@@ -625,6 +614,42 @@ int main()
 		points.push_back(std::move(p));
 	}
 
-	ga prog(points, fout);
-	prog.start_ga();
+	/// 计算距离矩阵
+	vector<vector<double>> dist(n);
+	for (vector<double>& line : dist)
+	{
+		line.resize(points.size(), 0);
+	}
+	for (int i = 1; i < points.size(); ++i)
+	{
+		for (int j = 0; j < i; ++j)
+		{
+			double dis = get_dist(points[i], points[j]);
+			dist[i][j] = dist[j][i] = dis;
+		}
+	}
+
+	const int cast = 30; // 灾变次数
+	double min_length = numeric_limits<double>::max();
+	string out;
+
+	for (int i = 0; i < cast; ++i)
+	{
+		ostringstream os;
+
+		ga prog(points, os, dist);
+		prog.start_ga();
+
+		double len = prog.get_min_length();
+		if(len<min_length)
+		{
+			min_length = len;
+			out = os.str();
+		}
+	}
+
+	cout << "最优解：" << min_length << endl;
+
+	ofstream fout("out.txt");
+	fout << out;
 }

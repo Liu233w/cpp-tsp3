@@ -263,7 +263,7 @@ class population
 	constexpr static double mutation_rate = 0.2;
 
 	/**
-	 * \brief 最大精英比率
+	 * \brief 最大精英比率（精英留存率）
 	 */
 	constexpr static double max_elite_rate = 0.3;
 
@@ -524,7 +524,7 @@ class ga
 	 */
 	constexpr static double max_length_diff = 1e-15;
 
-	const static int max_collapse_times = 1000;
+	const static int max_collapse_times = 500;
 
 	ostream& data_out_stream_;
 
@@ -578,12 +578,20 @@ public:
 			last_population_ = std::move(new_population);
 			print_status();
 		}
+
+		cout << "代数：" << generation_ << " 长度："
+			<< last_population_.get_best_chromosome().get_length() << endl;
 	}
 
+	/**
+	 * \brief 打印当前状态
+	 */
 	void print_status() const
 	{
 		auto best_chromosome = last_population_.get_best_chromosome();
+#ifdef DEBUG
 		cout << "第 " << generation_ << " 代，长度： " << best_chromosome.get_length() << endl;
+#endif
 
 		vector<int>& idxs = best_chromosome.get_point_indexs();
 		string seq = "";
@@ -594,7 +602,9 @@ public:
 			seq += points_[idxs[i]].name;
 		}
 
+#ifdef DEBUG
 		cout << seq << endl;
+#endif
 		data_out_stream_ << best_chromosome.get_length() << ' ' << seq << endl;
 	}
 };

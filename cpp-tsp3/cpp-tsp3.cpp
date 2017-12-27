@@ -12,6 +12,8 @@
 
 using namespace std;
 
+//#define DEBUG
+
 /**
  * \brief 随机数生成器
  */
@@ -88,27 +90,27 @@ public:
 		}
 
 		///使用改良圈法来取得较优的解
-		//int flag = 1;
-		//while (flag)
-		//{
-		//	flag = 0;
-		//	//不断选取uv子串，尝试倒置uv子串的顺序后解是否更优，如果更优则变更
-		//	for (int u = 1; u < n - 2; u++)
-		//	{
-		//		for (int v = u + 1; v < n - 1; v++)
-		//		{
-		//			if (dist_[sequence_[u]][sequence_[v + 1]] + dist_[sequence_[u - 1]][sequence_[v]] <
-		//				dist_[sequence_[u]][sequence_[u - 1]] + dist_[sequence_[v]][sequence_[v + 1]])
-		//			{
-		//				for (int k = u; k <= (u + v) / 2; k++)
-		//				{
-		//					swap(sequence_[k], sequence_[v - (k - u)]);
-		//					flag = 1;
-		//				}
-		//			}
-		//		}
-		//	}
-		//}
+		int flag = 1;
+		while (flag)
+		{
+			flag = 0;
+			//不断选取uv子串，尝试倒置uv子串的顺序后解是否更优，如果更优则变更
+			for (int u = 1; u < n - 2; u++)
+			{
+				for (int v = u + 1; v < n - 1; v++)
+				{
+					if (dist_[sequence_[u]][sequence_[v + 1]] + dist_[sequence_[u - 1]][sequence_[v]] <
+						dist_[sequence_[u]][sequence_[u - 1]] + dist_[sequence_[v]][sequence_[v + 1]])
+					{
+						for (int k = u; k <= (u + v) / 2; k++)
+						{
+							swap(sequence_[k], sequence_[v - (k - u)]);
+							flag = 1;
+						}
+					}
+				}
+			}
+		}
 
 		calc_sum_length();
 	}
@@ -287,7 +289,7 @@ class population
 	constexpr static double mutation_rate = 0.2;
 
 	/**
-	 * \brief 最大精英比率（精英留存率）
+	 * \brief 最大精英比率（精英留存率）。为 0 时保留一个精英，为负数时不保留精英
 	 */
 	constexpr static double max_elite_rate = 0.3;
 
@@ -405,15 +407,25 @@ class population
 	 */
 	void elite_fix(population& that)
 	{
-		sort(chromosomes_.begin(), chromosomes_.end());
-		sort(that.chromosomes_.begin(), that.chromosomes_.end());
-
-		const uniform_real_distribution<double> urd(0, max_elite_rate);
-
-		const int elite_num = urd(eng) * chromosome_num;
-		for (int i = 0; i < elite_num; ++i)
+		if (max_elite_rate >= 0)
 		{
-			that.chromosomes_[chromosome_num - i - 1] = chromosomes_[i];
+			sort(chromosomes_.begin(), chromosomes_.end());
+			sort(that.chromosomes_.begin(), that.chromosomes_.end());
+
+			if (max_elite_rate == 0)
+			{
+				that.chromosomes_[chromosome_num - 1] = chromosomes_[0];
+			}
+			else
+			{
+				const uniform_real_distribution<double> urd(0, max_elite_rate);
+
+				const int elite_num = urd(eng) * chromosome_num;
+				for (int i = 0; i < elite_num; ++i)
+				{
+					that.chromosomes_[chromosome_num - i - 1] = chromosomes_[i];
+				}
+			}
 		}
 	}
 
@@ -570,6 +582,11 @@ public:
 			last_length = new_length;
 			last_population_ = std::move(new_population);
 			print_status();
+			if (generation_ % 10000 == 0)
+			{
+				auto best_chromosome = last_population_.get_best_chromosome();
+				cout << "第 " << generation_ << " 代，长度： " << best_chromosome.get_length() << endl;
+			}
 		}
 
 		cout << "代数：" << generation_ << " 长度："
@@ -664,7 +681,7 @@ int main()
 		prog.start_ga();
 
 		double len = prog.get_min_length();
-		if(len<min_length)
+		if (len < min_length)
 		{
 			min_length = len;
 			out = os.str();

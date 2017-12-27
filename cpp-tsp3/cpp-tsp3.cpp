@@ -87,6 +87,29 @@ public:
 			swap(sequence_[i], sequence_[select_point()]);
 		}
 
+		///使用改良圈法来取得较优的解
+		//int flag = 1;
+		//while (flag)
+		//{
+		//	flag = 0;
+		//	//不断选取uv子串，尝试倒置uv子串的顺序后解是否更优，如果更优则变更
+		//	for (int u = 1; u < n - 2; u++)
+		//	{
+		//		for (int v = u + 1; v < n - 1; v++)
+		//		{
+		//			if (dist_[sequence_[u]][sequence_[v + 1]] + dist_[sequence_[u - 1]][sequence_[v]] <
+		//				dist_[sequence_[u]][sequence_[u - 1]] + dist_[sequence_[v]][sequence_[v + 1]])
+		//			{
+		//				for (int k = u; k <= (u + v) / 2; k++)
+		//				{
+		//					swap(sequence_[k], sequence_[v - (k - u)]);
+		//					flag = 1;
+		//				}
+		//			}
+		//		}
+		//	}
+		//}
+
 		calc_sum_length();
 	}
 

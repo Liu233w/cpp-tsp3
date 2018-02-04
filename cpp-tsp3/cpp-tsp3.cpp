@@ -669,11 +669,12 @@ int main()
 		}
 	}
 
-	const int cast = 30; // 灾变次数
+	// 连续 max_cast 次灾变得不到更优解时停止迭代
+	const int max_cast = 30; // 最大灾变次数
 	double min_length = numeric_limits<double>::max();
 	string out;
 
-	for (int i = 0; i < cast; ++i)
+	for (int i = 0; i < max_cast; ++i)
 	{
 		ostringstream os;
 
@@ -685,6 +686,7 @@ int main()
 		{
 			min_length = len;
 			out = os.str();
+			i = 0;
 		}
 	}
 

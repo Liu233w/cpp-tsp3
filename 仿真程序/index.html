@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>仿真程序</title>
+</head>
+
+<body>
+  <p>绿色：起点；蓝色：终点</p>
+  <h4> 长度： <span id="num"></span>； 第 <span id="gen"></span> 代</h4>
+
+  <canvas id="canvas" width="800px" height="800px">
+    请使用支持 canvas 的浏览器打开
+  </canvas>
+
+  <h4>
+    输入点的位置
+  </h4>
+  <textarea id='in-data'>
+  </textarea>
+  <button type="button" id="start-in">初始化</button>
+  <h4>
+    将下方的结果放入 c++ 程序的 in.txt 中
+  </h4>
+  <textarea id="out-data">
+  </textarea>
+
+  <h4>
+    输入过程
+  </h4>
+  <textarea id="in-res">
+  </textarea>
+  <button type="button" id="start-res">开始仿真</button>
+
+  <script src="jquery-1.8.3.min.js"></script>
+  <script src="main.js"></script>
+  <script>
+    $(function() {
+      window.ctx = document.getElementById('canvas').getContext("2d");
+      //canvasApp() //包含整个Canvas应用程序
+
+      $('#start-in').click(convertInput)
+      $('#start-res').click(canvasApp)
+    })
+  </script>
+</body>
+
+</html>

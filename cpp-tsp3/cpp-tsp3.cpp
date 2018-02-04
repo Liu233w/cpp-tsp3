@@ -518,17 +518,24 @@ public:
 	}
 };
 
+/**
+ * \brief 表示一次隔离的计算。新建一个对象可以进行和上个对象无关的新计算，可以用于灾变。
+ */
 class ga
 {
 	/**
 	 * \brief 所有的点
 	 */
-	const vector<point> points_;
+	const vector<point> &points_;
 
 	/**
 	 * \brief 表示点之间的距离。索引是点本身在 points_ 里面的索引
 	 */
-	vector<vector<double>> dist_;
+	const vector<vector<double>> &dist_;
+
+	// 上面的两个成员变量保存了输入数据。把它们变成常量引用以提高效率。
+	// 但如果使用指针和 new 实例化 ga 类的话，有可能导致内存问题。
+	// 把这两个变量变成普通的常量（去掉&）可以提高代码的稳定性。详情见下方的 main 函数。
 
 	population last_population_;
 
@@ -678,6 +685,9 @@ int main()
 	{
 		ostringstream os;
 
+		// 这三个对象在prog中都是引用，在使用纯 RAII 时没有问题。
+		// 如果这三个对象使用 RAII 实例化，而 ga 使用 new 在堆上分配内存的话，有可能导致
+		// prog 中的引用指向了被释放的内存。详情见 ga 类中的注释。
 		ga prog(points, os, dist);
 		prog.start_ga();
 

@@ -19,7 +19,7 @@ using namespace std;
  */
 random_device rd;
 default_random_engine eng(rd());
-const uniform_real_distribution<double> urd(0, 1);
+uniform_real_distribution<double> urd(0, 1);
 
 struct point
 {
